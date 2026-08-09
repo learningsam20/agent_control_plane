@@ -23,8 +23,8 @@ synced from [DataHub](https://datahubproject.io/).
 
 > [!NOTE]
 > **Local setup** — run the exact same stack on your machine in minutes.
-> Follow [SETUP.md](SETUP.md): one-command launcher, demo scenarios, telemetry,
-> tests.
+> Follow [SETUP.md](docs/SETUP.md): one-command launcher, demo scenarios,
+> telemetry, tests.
 
 ## Highlights
 
@@ -60,7 +60,7 @@ sequenceDiagram
 
 Every request is signed, verified, policy-checked, scored, and chained — nothing
 happens on trust alone. Delegation, reputation, audit, and DataHub context are
-all part of the same gate (see [ARCHITECTURE.md](ARCHITECTURE.md#trust-model--zero-trust-end-to-end)).
+all part of the same gate (see [ARCHITECTURE.md](docs/ARCHITECTURE.md#trust-model--zero-trust-end-to-end)).
 
 ## Features
 
@@ -143,9 +143,13 @@ all part of the same gate (see [ARCHITECTURE.md](ARCHITECTURE.md#trust-model--ze
 
 ## Documentation
 
-- [**SETUP.md**](SETUP.md) — prerequisites, one-click start, configuration,
+- [**Project story**](docs/project_story.md) — the hackathon write-up: about,
+  inspiration, how it works, the math, what we learned.
+- [**PRD**](docs/prd.md) — product requirements for Agent Control Plane 2.0.
+- [**Requirements**](docs/requirement.md) — feature requirements breakdown.
+- [**SETUP.md**](docs/SETUP.md) — prerequisites, one-click start, configuration,
   demo/simulation scenarios with diagrams, telemetry, tests, troubleshooting.
-- [**ARCHITECTURE.md**](ARCHITECTURE.md) — deep dive: trust model, governed
+- [**ARCHITECTURE.md**](docs/ARCHITECTURE.md) — deep dive: trust model, governed
   agent runtime, DataHub context, MELT telemetry pipeline, deployment runtime,
   and the full config reference.
 
@@ -204,7 +208,7 @@ flowchart LR
     LG --> MET
 ```
 
-> See [**ARCHITECTURE.md**](ARCHITECTURE.md) for the full system diagram, the
+> See [**ARCHITECTURE.md**](docs/ARCHITECTURE.md) for the full system diagram, the
 > sequence-level trust model, DataHub context (criticality scoring, guardian
 > scans, what-if semantics), the container deployment runtime, and the complete
 > configuration reference.
@@ -363,13 +367,13 @@ sequenceDiagram
 Run it yourself: `python3 scripts/demo.py`, or boot the stack and use
 `POST /api/agents/ag_analyst/run {"objective": "…", "sync": true}`. Full
 scenario walkthroughs (including all six example scripts) are in
-[SETUP.md → Demo scenarios](SETUP.md#demo-scenarios).
+[SETUP.md → Demo scenarios](docs/SETUP.md#demo-scenarios).
 
 ## Deployment
 
 The same code runs three ways — locally, as a single container, or hosted.
 Full step-by-step instructions (including the Docker and Vercel paths) live in
-[SETUP.md → §12 Deploy with Docker](SETUP.md#12--deploy-with-docker).
+[SETUP.md → §12 Deploy with Docker](docs/SETUP.md#12--deploy-with-docker).
 
 | Target | How | Persistence | Worker |
 | ------ | --- | ----------- | ------ |
