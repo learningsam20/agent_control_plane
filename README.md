@@ -36,24 +36,31 @@ synced from [DataHub](https://datahubproject.io/).
 | **Governed AI agents** | Real **LangGraph** agents whose every tool call is a governed gateway request: objective → plan (LLM or rule-based) → signed execution → tamper-evident audit trail, run by a dedicated agent-runtime worker. |
 | **Production-ready** | **44 automated tests**, one **self-contained multi-arch Docker image** (amd64 + arm64), `/health` readiness checks, env-driven configuration, vendor-neutral **MELT telemetry**, and an API-driven deploy script for Docker, Render, and Vercel. |
 
+## How it works
+
+```mermaid
+sequenceDiagram
+    participant A as Agent · Ed25519 identity
+    participant G as Zero-trust gateway
+    participant R as Reputation engine
+    participant P as Policy engine · native + OPA
+    participant H as Audit hash-chain
+    participant D as DataHub catalog
+
+    A->>A: sign(canonical body) with private key
+    A->>G: POST /api/requests/gateway + X-Agent-Signature
+    G->>G: verify signature with public key
+    G->>R: resolve reputation tier
+    G->>P: evaluate(action, resource, domain, delegation)
+    P-->>G: allow or deny · default-deny
+    G->>H: append decision · SHA-256 + Ed25519
+    G->>D: read catalog · record agent impact
+    G-->>A: allow + result, or deny + reason
 ```
-  Agent (Ed25519 identity)                     DataHub
-        │  signed request                           │
-        ▼                                          │
-  ┌─────────────────────────────────────┐          │
-  │  Zero-Trust Gateway                 │          │
-  │   · signature verification          │  governance metadata
-  │   · delegation chain resolution     │  (domains, classification,
-  │   · reputation gating               │   lineage, usage, impact)
-  │   · policy decision (native / OPA)  │          │
-  └─────────────────────────────────────┘          │
-        │  allow / deny + reason                   ▼
-        ▼                                    Catalog + Impact
-  ┌─────────────────────────────────────┐
-  │  Tamper-evident audit (SHA-256 +    │
-  │  Ed25519 hash chain)                │
-  └─────────────────────────────────────┘
-```
+
+Every request is signed, verified, policy-checked, scored, and chained — nothing
+happens on trust alone. Delegation, reputation, audit, and DataHub context are
+all part of the same gate (see [ARCHITECTURE.md](ARCHITECTURE.md#trust-model--zero-trust-end-to-end)).
 
 ## Features
 
