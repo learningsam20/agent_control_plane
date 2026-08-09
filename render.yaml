@@ -1,0 +1,47 @@
+# Render Blueprint — control plane deployed from a pre-built Docker Hub image.
+#
+# The image is built and pushed to Docker Hub by scripts/render/deploy.sh
+# (Dockerfile bundles the app, the frontend build, and OPA), then Render runs
+# the container from the image URL below.
+#
+# The deploy script mirrors this blueprint via the Render API and defaults to
+# the FREE plan, which needs no card and no persistent disk (SQLite reseeds
+# from the bundled reference catalog on each boot). To keep state across
+# restarts, set RENDER_PLAN=starter in the script and uncomment the disk block
+# (free web services don't support disks).
+#
+# After the service is created, set LLM_API_KEY in the dashboard
+# (controlplane > Environment) and redeploy — everything else is pre-configured.
+
+services:
+  - type: web
+    name: controlplane
+    runtime: image
+    image:
+      url: docker.io/learningsam20/controlplane:latest
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      # OpenRouter for LLM planning (via LiteLLM). Swap the model id freely,
+      # e.g. openrouter/openai/gpt-4o-mini.
+      - key: LLM_MODEL
+        value: openrouter/anthropic/claude-3.5-sonnet
+      # Set LLM_API_KEY in the Render dashboard (sk-or-v1-...). Not committed.
+      - key: LLM_API_KEY
+        sync: false
+      # OPA is bundled inside the container (127.0.0.1:8181) — no sidecar needed.
+      - key: CONTROLPLANE_POLICY_ENGINE
+        value: opa
+      - key: CONTROLPLANE_OPA_URL
+        value: http://127.0.0.1:8181
+      - key: CONTROLPLANE_RUN_WORKER
+        value: "true"
+      - key: CONTROLPLANE_TELEMETRY_EXPORTER
+        value: file
+      - key: SECRET_KEY
+        generateValue: true
+    # Paid plans only (free web services can't attach disks):
+    # disk:
+    #   name: controlplane-data
+    #   mountPath: /app/backend/data
+    #   sizeGB: 1

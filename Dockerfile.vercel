@@ -1,0 +1,57 @@
+# syntax=docker/dockerfile:1
+
+# Agent Control Plane 2.0 — Vercel image (Dockerfile.vercel is auto-detected
+# and deployed on Vercel Fluid compute).
+#
+# Vercel runs the container as a stateless request-scoped process listening on
+# $PORT, with an ephemeral filesystem: SQLite reseeds demo data on each boot,
+# so this is best for a shareable demo. The console runs agent runs in-process
+# (?sync=true), so the background worker is disabled. OPA runs inside the
+# container (127.0.0.1:8181) so policy evaluation still uses the Rego engine.
+
+# ---------- stage 1: build the console ----------
+FROM node:20-alpine AS web-build
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# ---------- stage 2: runtime ----------
+FROM python:3.12-slim
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tini curl \
+ && rm -rf /var/lib/apt/lists/*
+
+ARG OPA_VERSION=v0.68.0
+RUN set -eux; \
+    case "$(uname -m)" in \
+      x86_64) OPA_ARCH=amd64 ;; \
+      aarch64|arm64) OPA_ARCH=arm64 ;; \
+      *) echo "unsupported arch: $(uname -m)" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL -o /usr/local/bin/opa \
+      "https://github.com/open-policy-agent/opa/releases/download/${OPA_VERSION}/opa_linux_${OPA_ARCH}_static"; \
+    chmod +x /usr/local/bin/opa; \
+    apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app/backend
+
+COPY backend/requirements.txt ./
+RUN pip install --no-cache-dir --disable-pip-version-check -r requirements.txt
+
+COPY backend/app ./app
+COPY backend/agents ./agents
+COPY backend/sdk ./sdk
+COPY backend/run.py ./
+COPY policies /app/policies
+COPY --from=web-build /app/frontend/dist /app/frontend/dist
+COPY scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENV CONTROLPLANE_RUN_WORKER=false \
+    CONTROLPLANE_POLICY_ENGINE=opa \
+    CONTROLPLANE_OPA_URL=http://127.0.0.1:8181
+
+EXPOSE 80
+ENTRYPOINT ["tini", "--", "/usr/local/bin/entrypoint.sh"]
