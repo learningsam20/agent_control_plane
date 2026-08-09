@@ -143,7 +143,7 @@ all part of the same gate (see [ARCHITECTURE.md](docs/ARCHITECTURE.md#trust-mode
 
 ## Documentation
 
-- [**Project story**](docs/project_story.md) — the hackathon write-up: about,
+- [**Project story**](docs/project_story.md) — the write-up: about, inspiration,
   inspiration, how it works, the math, what we learned.
 - [**PRD**](docs/prd.md) — product requirements for Agent Control Plane 2.0.
 - [**Requirements**](docs/requirement.md) — feature requirements breakdown.
