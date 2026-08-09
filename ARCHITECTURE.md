@@ -209,12 +209,12 @@ control plane keeps working unchanged when they are off or unreachable:
 ```mermaid
 flowchart LR
     OBJ[NL objective] --> PL[planner node]
-    PL -->|plan [{action, resource}]| EX[executor node]
+    PL -->|"plan [{action, resource}]"| EX[executor node]
     EX -->|governed tool call| GW2[(gateway)]
     GW2 -->|decision| EX
     EX -->|results + denied flag| SUM[summarizer node]
     SUM --> OUT[summary]
-    EX --> MET2[OTel span agents.{action}]
+    EX --> MET2["OTel span agents.{action}"]
     PL --> MET2
 ```
 
@@ -288,7 +288,7 @@ flowchart TB
     DATA --> WK
 
     subgraph HOST[Hosts]
-        R[Render web service<br/>health check /health<br/>plan free | starter]
+        R[Render web service<br/>health check /health<br/>plan free or starter]
         VC[Vercel Fluid compute<br/>worker disabled]
         VM[Any VM / Dokku / ECS]
     end

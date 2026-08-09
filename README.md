@@ -1,7 +1,11 @@
 # Agent Control Plane
 
-A zero-trust control plane for AI agents acting on organizational data,
-purpose-built for the DataHub hackathon.
+**Govern every AI action. Trust nothing by default.**
+
+Agent Control Plane is the zero-trust governance layer for AI agents: every
+action an agent takes is identity-signed, policy-checked, reputation-gated,
+delegation-scoped, and written to a tamper-evident audit chain — with data
+intelligence built on DataHub lineage.
 
 Agents (AI assistants, pipelines, agents) are first-class governed principals:
 they are issued identity keys, they sign every action they take, they carry a
@@ -11,15 +15,26 @@ written to a tamper-evident, hash-chained audit ledger. Governance metadata
 (domains, classifications, owners, lineage, usage) is modeled after and
 synced from [DataHub](https://datahubproject.io/).
 
-> **Live demo:** the app is running on Render —
+> [!TIP]
+> **Live demo on Render** —
 > **[https://controlplane-a0c4.onrender.com](https://controlplane-a0c4.onrender.com)**
 > (console + API in one container, OPA bundled, `Reference catalog mode`).
-> Free-plan caveats (cold start after idle, reseed on boot) and the full
-> works / doesn't-work matrix are in [Deployment](#deployment).
+> What works / doesn't work on the image: see [Deployment](#deployment).
 
-> **Local setup:** run the exact same stack on your machine in minutes —
-> see [SETUP.md](SETUP.md) (one-command launcher, demo scenarios, telemetry,
-> tests).
+> [!NOTE]
+> **Local setup** — run the exact same stack on your machine in minutes.
+> Follow [SETUP.md](SETUP.md): one-command launcher, demo scenarios, telemetry,
+> tests.
+
+## Highlights
+
+| Pillar | Why it stands out |
+| ------ | ----------------- |
+| **Zero-trust by design** | No shared secret, no implicit trust: every request is an **Ed25519-signed envelope**, evaluated by a **default-deny policy engine** (native Python *and* OPA Rego), gated by a **reputation tier**, bounded by **delegation scopes**, and recorded in a **SHA-256 + Ed25519 hash chain**. |
+| **Real DataHub integration** | Live catalog sync over DataHub **GraphQL**, agent impact written back through DataHub's **MetadataChangeProposal** ingest API, optional reads via the **DataHub MCP server**, and natural-language analytics through **datahub-analytics-agent** — with a zero-dependency reference mode that demos fully offline. |
+| **Intelligence built on top of DataHub** | Dataset **criticality** from lineage PageRank + agent impact + classification risk + blast radius, an **agent × dataset impact heatmap**, **what-if chaos experiments**, governed **guardian scans**, watchlist **breach alerts**, and **policy-gap detection** — all audited. |
+| **Governed AI agents** | Real **LangGraph** agents whose every tool call is a governed gateway request: objective → plan (LLM or rule-based) → signed execution → tamper-evident audit trail, run by a dedicated agent-runtime worker. |
+| **Production-ready** | **44 automated tests**, one **self-contained multi-arch Docker image** (amd64 + arm64), `/health` readiness checks, env-driven configuration, vendor-neutral **MELT telemetry**, and an API-driven deploy script for Docker, Render, and Vercel. |
 
 ```
   Agent (Ed25519 identity)                     DataHub
@@ -42,12 +57,9 @@ synced from [DataHub](https://datahubproject.io/).
 
 ## Features
 
-- **Governed LangGraph agents** — real LangGraph/LangChain agents whose every
-  tool call is a signed gateway request. A natural-language objective is turned
-  into a plan (LiteLLM planner when `LLM_MODEL` is set, rule-based otherwise),
-  executed only through the control plane, and audited end-to-end. Runs are
-  executed by a separate worker process acting as the agent runtime.
-- **Zero-trust gateway** — every request is an Ed25519-signed envelope
+### Zero-trust security core
+
+- **Signed gateway** — every request is an Ed25519-signed envelope
   (`X-Agent-Signature` over the canonical JSON body). No trust is implicit.
 - **Delegation** — agents delegate capabilities within an explicit
   `{actions, datasets, domains}` scope, signed by the delegator, chainable up
@@ -56,15 +68,19 @@ synced from [DataHub](https://datahubproject.io/).
 - **Reputation engine** — tiered trust (`untrusted → standard → elevated →
   privileged`) that rewards good behavior and decays after violations; repeated
   violations auto-suspend an agent.
-- **Policy engine** — ordered, default-deny rules with native Python evaluation;
-  when an OPA sidecar is reachable the control plane pushes the Rego mirror
-  (`policies/datahub.rego`) at startup and evaluates every gateway request
-  there, transparently falling back to native when OPA is down.
 - **Tamper-evident audit** — every event is chained via SHA-256 with Ed25519
   signatures on agent-initiated events; `verify_chain` detects any alteration.
-- **Vendor-neutral telemetry** — full **MELT** (Metrics, Events, Logs, Traces)
-  via OpenTelemetry with a JSON Lines file exporter by default and a configurable
-  OTLP exporter (any collector: Tempo, Jaeger, Loki, …). No cloud-vendor SDKs.
+
+### Policy & governance
+
+- **Policy engine** — ordered, default-deny rules with native Python evaluation.
+  When an OPA sidecar (or the bundled OPA inside the image) is reachable, the
+  control plane pushes the Rego mirror (`policies/datahub.rego`) at startup and
+  evaluates every gateway request there, transparently falling back to native
+  when OPA is down.
+
+### DataHub intelligence
+
 - **DataHub integration** — catalog of governed datasets (domains,
   classifications, owners, lineage DAGs) synced via GraphQL search/lineage when
   `DATAHUB_ENDPOINT` is set, with agent impact weighted back into DataHub via
@@ -78,12 +94,6 @@ synced from [DataHub](https://datahubproject.io/).
   every boot (same domains/classifications/lineage/impact features, minus the
   live graph). `GET /api/datahub/status` reports `catalog_source` and the
   console shows a **Live DataHub catalog / Reference catalog mode** badge.
-- **Single-image deployment** — the React console is built into the same image
-  as the FastAPI API, with **OPA bundled inside** (started in-container on
-  `127.0.0.1:8181`, Rego pushed at boot) and the agent worker running alongside.
-  One container runs anywhere: Render, Vercel, Docker Compose, or a VM
-  ([Deployment](#deployment)). The Render image is built as a multi-arch
-  manifest (`linux/amd64` + `linux/arm64`) on Docker Hub.
 - **Criticality & monitoring** — every dataset is scored from real lineage
   (PageRank centrality + agent impact + classification risk + blast radius).
   The guardian agent (`ag_monitor`) runs governed scans that persist findings
@@ -95,20 +105,104 @@ synced from [DataHub](https://datahubproject.io/).
   Each run is persisted and audited, includes a modeled risk/likelihood
   prediction, and — when no agent has recorded actions in the subgraph —
   predicts impacted agents from delegations + domain grants.
+
+### Governed AI agents
+
+- **Governed LangGraph agents** — real LangGraph/LangChain agents whose every
+  tool call is a signed gateway request. A natural-language objective is turned
+  into a plan (LiteLLM planner when `LLM_MODEL` is set, rule-based otherwise),
+  executed only through the control plane, and audited end-to-end. Runs are
+  executed by a separate worker process acting as the agent runtime.
+
+### Observability
+
+- **Vendor-neutral telemetry** — full **MELT** (Metrics, Events, Logs, Traces)
+  via OpenTelemetry with a JSON Lines file exporter by default and a configurable
+  OTLP exporter (any collector: Tempo, Jaeger, Loki, …). No cloud-vendor SDKs.
+
+### Console & deployment
+
 - **Console** — React dashboard with live allow/deny matrix, agent runs,
   delegation management, zero-trust lab, audit verifier, policy editor,
   catalog, standalone lineage graph, monitor, and impact analysis. Large lists
   (audit, catalog, agents, runs, delegations, scans, experiments) get
   search, sort, and pagination.
+- **Single-image deployment** — the React console is built into the same image
+  as the FastAPI API, with **OPA bundled inside** (started in-container on
+  `127.0.0.1:8181`, Rego pushed at boot) and the agent worker running alongside.
+  One container runs anywhere: Render, Vercel, Docker Compose, or a VM
+  ([Deployment](#deployment)). The Render image is built as a multi-arch
+  manifest (`linux/amd64` + `linux/arm64`) on Docker Hub.
 
 ## Documentation
 
 - [**SETUP.md**](SETUP.md) — prerequisites, one-click start, configuration,
   demo/simulation scenarios with diagrams, telemetry, tests, troubleshooting.
-- [**ARCHITECTURE.md**](ARCHITECTURE.md) — components, trust model, governed
-  agent runtime, MELT telemetry pipeline, config reference.
+- [**ARCHITECTURE.md**](ARCHITECTURE.md) — deep dive: trust model, governed
+  agent runtime, DataHub context, MELT telemetry pipeline, deployment runtime,
+  and the full config reference.
 
 ## Architecture
+
+The system is **one deployable unit** — console + API + bundled OPA + agent
+worker — with three collaborating planes: the React console, the FastAPI
+control plane, and the agent runtime.
+
+```mermaid
+flowchart LR
+    subgraph Console[React console · :5185 / :8080]
+        UI[Dashboard · Agents · Runs · Zero-Trust Lab · Audit · Policies · DataHub · Lineage · Monitor · Impact]
+    end
+
+    subgraph CP[Control plane · FastAPI]
+        API[API /api]
+        GW[Zero-trust gateway]
+        POL[Policy engine · native + OPA]
+        REP[Reputation engine]
+        DEL[Delegation + scopes]
+        HC[Audit hash-chain]
+        CAT[DataHub catalog]
+        CRIT[Criticality + guardian monitor]
+        IMP[Impact analysis]
+    end
+
+    subgraph RT[Agent runtime]
+        WK[Agent worker]
+        LG[LangGraph planner / executor / summarizer]
+        KEYS[Ed25519 identity keys]
+    end
+
+    SDK[Python SDK]
+    DH[DataHub GMS · GraphQL + MetadataChangeProposal]
+    REF[Reference catalog · bundled seed]
+    MET[MELT telemetry · JSONL / OTLP]
+
+    UI -->|proxy /api| API
+    SDK -->|signed requests| GW
+    WK -->|claims runs| API
+    LG -->|governed tool calls| GW
+    KEYS --> WK
+    API --> GW
+    GW --> POL
+    GW --> REP
+    GW --> DEL
+    GW --> HC
+    GW --> CAT
+    CAT --> DH
+    REF -. no DATAHUB_ENDPOINT .-> CAT
+    CAT --> CRIT
+    CRIT --> IMP
+    IMP --> HC
+    API --> MET
+    LG --> MET
+```
+
+> See [**ARCHITECTURE.md**](ARCHITECTURE.md) for the full system diagram, the
+> sequence-level trust model, DataHub context (criticality scoring, guardian
+> scans, what-if semantics), the container deployment runtime, and the complete
+> configuration reference.
+
+Repository layout:
 
 ```
 backend/
